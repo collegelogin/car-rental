@@ -28,6 +28,9 @@ class AuthService:
         
         if not phone:
             return False, "Phone number cannot be empty"
+
+        if not Validators.validate_phone(phone):
+            return False, "Invalid phone number format"
         
         if role not in ['customer', 'admin']:
             return False, "Role must be 'customer' or 'admin'"

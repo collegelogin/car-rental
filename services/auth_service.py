@@ -95,3 +95,28 @@ class AuthService:
             return None
         
         return User.from_db_row(tuple(user_data))
+
+    def change_password(self, user_id, old_password, new_password):
+        # Get user
+        user = self.get_user_by_id(user_id)
+        if not user:
+            return False, "User not found"
+    
+        # Verify old password
+        if user.password != SecurityUtils.hash_password(old_password):
+            return False, "Current password is incorrect"
+    
+        # Validate new password
+        if len(new_password) < 6:
+            return False, "New password must be at least 6 characters"
+    
+        # Update password
+        try:
+            hashed_password = SecurityUtils.hash_password(new_password)
+            self.db.execute_query(
+                "UPDATE users SET password = ? WHERE user_id = ?",
+                (hashed_password, user_id)
+                )
+            return True, "Password changed successfully"
+        except Exception as e:
+            return False, f"Failed to change password: {str(e)}"

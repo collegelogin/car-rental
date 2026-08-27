@@ -217,12 +217,24 @@ class RentalService:
     
     def approve_booking(self, booking_id, admin_notes=''):
         """Approve a booking"""
+        booking = self.db.fetch_one(
+        "SELECT car_id FROM bookings WHERE booking_id = ?", 
+        (booking_id,)
+        )
+    
+        if not booking:
+            return False, "Booking not found"
         try:
             self.db.execute_query('''
                 UPDATE bookings 
                 SET status = 'approved', admin_notes = ?
                 WHERE booking_id = ?
-            ''', (admin_notes, booking_id))
+                ''', (admin_notes, booking_id))
+        
+            self.db.execute_query(
+                "UPDATE cars SET available_now = 'no' WHERE car_id = ?", 
+                (booking['car_id'],)
+                )
             return True, "Booking approved successfully"
         except Exception as e:
             return False, f"Failed to approve booking: {str(e)}"

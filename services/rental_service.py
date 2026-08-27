@@ -141,11 +141,16 @@ class RentalService:
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
         except ValueError:
             return False, "Invalid date format. Use YYYY-MM-DD"
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        if start_date < today:
+            return False, "Cannot book a car for a past date"
         
         if end_date <= start_date:
             return False, "End date must be after start date"
         
         total_days = (end_date - start_date).days
+        if total_days < 1:
+            return False, "Booking must be for at least 1 day"
         
         if total_days < car.min_rent_period:
             return False, f"Minimum rent period is {car.min_rent_period} days"
@@ -270,3 +275,63 @@ class RentalService:
             return True, "Booking rejected successfully"
         except Exception as e:
             return False, f"Failed to reject booking: {str(e)}"
+
+    def complete_booking(self, booking_id, actual_return_date_str=None):
+        """Complete a booking and calculate any late fees"""
+        from datetime import datetime, timedelta
+        
+        # Get booking details
+        booking = self.db.fetch_one(
+            "SELECT * FROM bookings WHERE booking_id = ?", 
+            (booking_id,)
+        )
+        
+        if not booking:
+            return False, "Booking not found"
+        
+        if booking['status'] != 'approved':
+            return False, "Booking must be approved before completing"
+        
+        # Get car details for late fee
+        car = self.get_car_by_id(booking['car_id'])
+        if not car:
+            return False, "Car not found"
+        
+        # Determine actual return date
+        if actual_return_date_str:
+            try:
+                actual_return = datetime.strptime(actual_return_date_str, '%Y-%m-%d')
+            except ValueError:
+                return False, "Invalid date format. Use YYYY-MM-DD"
+        else:
+            actual_return = datetime.now()
+        
+        # Parse rental end date
+        rental_end = datetime.strptime(booking['rental_end_date'], '%Y-%m-%d')
+        
+        # Calculate late fee if applicable
+        late_fee = 0
+        if actual_return > rental_end:
+            days_late = (actual_return - rental_end).days
+            late_fee = days_late * car.late_fee_per_day
+        
+        try:
+            # Update booking status
+            self.db.execute_query('''
+                UPDATE bookings 
+                SET status = 'completed', admin_notes = ?
+                WHERE booking_id = ?
+            ''', (f"Returned on {actual_return.strftime('%Y-%m-%d')}. Late fee: ${late_fee:.2f}", booking_id))
+            
+            # Make car available again
+            self.db.execute_query(
+                "UPDATE cars SET available_now = 'yes' WHERE car_id = ?", 
+                (booking['car_id'],)
+            )
+            message = f"Booking completed successfully"
+            if late_fee > 0:
+                message += f". Late fee of ${late_fee:.2f} applied for {days_late} day(s) late."
+            
+            return True, message
+        except Exception as e:
+            return False, f"Failed to complete booking: {str(e)}"

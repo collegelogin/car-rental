@@ -1,10 +1,10 @@
 from services.rental_service import RentalService
-
+from services.auth_service import AuthService
 class CustomerMenu:
     def __init__(self, user):
         self.user = user
         self.rental_service = RentalService()
-    
+        self.auth_service = AuthService()
     def display(self):
         while True:
             print("\n" + "="*50)
@@ -14,24 +14,26 @@ class CustomerMenu:
             print("1. View Available Cars")
             print("2. Book a Car")
             print("3. View My Bookings")
-            print("4. Logout")
+            print("4. Change Password")  
+            print("5. Logout") 
             print("="*50)
             
-            choice = input("Enter your choice (1-4): ").strip()
+            choice = input("Enter your choice (1-5): ").strip()
             if choice == '1':
                 self.view_available_cars()
             elif choice == '2':
                 self.book_car()
             elif choice == '3':
                 self.view_my_bookings()
-            elif choice == '4':
+            elif choice == '4':  
+                self.change_password()
+            elif choice == '5':  
                 print(f"\n Goodbye, {self.user.full_name}!")
                 break
             else:
-                print(" Invalid choice! Please try again.")
+                print("Invalid choice! Please try again.")
     
     def view_available_cars(self):
-        """View available cars"""
         print("\n" + "="*50)
         print("AVAILABLE CARS FOR RENT")
         print("="*50)
@@ -51,7 +53,6 @@ class CustomerMenu:
         print("\n" + "="*50)
     
     def book_car(self):
-        """Book a car"""
         print("\n" + "="*50)
         print("CAR BOOKING")
         print("="*50)
@@ -91,7 +92,6 @@ class CustomerMenu:
             print(f"\n {message}")
     
     def view_my_bookings(self):
-        """View customer's bookings"""
         print("\n" + "="*50)
         print("MY BOOKINGS")
         print("="*50)
@@ -110,4 +110,32 @@ class CustomerMenu:
             print(f"{booking['booking_id']:<6} {car_info:<20} {booking['rental_start_date']:<14} {booking['rental_end_date']:<14} {booking['total_days']:<6} {booking['total_fee']:<10.2f} {booking['status']:<12}")
         
         print("\n" + "="*50)
+
+    def change_password(self):
+        """Change user password"""
+        print("\n" + "="*50)
+        print("CHANGE PASSWORD")
+        print("="*50)
+        
+        old_password = input("Enter current password: ").strip()
+        new_password = input("Enter new password (min 6 characters): ").strip()
+        confirm_password = input("Confirm new password: ").strip()
+        
+        if new_password != confirm_password:
+            print("Passwords do not match!")
+            return
+        
+        if len(new_password) < 6:
+            print("New password must be at least 6 characters!")
+            return
+        
+        success, message = self.auth_service.change_password(
+            self.user.user_id, old_password, new_password
+        )
+        
+        if success:
+            print(f"\n {message}")
+        else:
+            print(f"\n {message}")
+    
 

@@ -46,7 +46,6 @@ class AdminMenu:
                 print("Invalid choice! Please try again.")
     
     def view_all_cars(self):
-        """View all cars"""
         print("\n" + "="*50)
         print("ALL CARS IN SYSTEM")
         print("="*50)
@@ -407,4 +406,5 @@ class AdminMenu:
             print(f"\n{message}")
         else:
             print(f"\n{message}")
+            
                        

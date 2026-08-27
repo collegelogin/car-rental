@@ -1,8 +1,11 @@
 from services.rental_service import RentalService
+from services.auth_service import AuthService  
 class AdminMenu:
+    
     def __init__(self, user):
         self.user = user
         self.rental_service = RentalService()
+        self.auth_service = AuthService()  
     
     def display(self):
         while True:
@@ -14,12 +17,13 @@ class AdminMenu:
             print("2. Add New Car")
             print("3. Update Car")
             print("4. Delete Car")
-            print("5. Manage Bookings (Approve/Reject)")
+            print("5. Manage Bookings (Approve/Reject/Complete)")
             print("6. View All Bookings")
-            print("7. Logout")
+            print("7. Change Password")  
+            print("8. Logout")
             print("="*50)
             
-            choice = input("Enter your choice (1-7): ").strip()
+            choice = input("Enter your choice (1-8): ").strip()
             
             if choice == '1':
                 self.view_all_cars()
@@ -33,11 +37,13 @@ class AdminMenu:
                 self.manage_bookings()
             elif choice == '6':
                 self.view_all_bookings()
-            elif choice == '7':
-                print(f"\n Goodbye, {self.user.full_name}!")
+            elif choice == '7': 
+                self.change_password()
+            elif choice == '8':
+                print(f"\nGoodbye, {self.user.full_name}!")
                 break
             else:
-                print(" Invalid choice! Please try again.")
+                print("Invalid choice! Please try again.")
     
     def view_all_cars(self):
         """View all cars"""
@@ -48,7 +54,7 @@ class AdminMenu:
         cars = self.rental_service.get_all_cars()
         
         if not cars:
-            print("\n No cars found in the system!")
+            print("\nNo cars found in the system!")
             return
         
         print(f"\n{'ID':<5} {'Make':<12} {'Model':<12} {'Year':<6} {'Mileage':<10} {'Available':<10} {'Min Days':<8} {'Max Days':<8} {'Rate($)':<8} {'Late Fee($)':<10}")
@@ -60,30 +66,31 @@ class AdminMenu:
         print("\n" + "="*50)
     
     def add_car(self):
+        """Add a new car"""
         print("\n" + "="*50)
-        print("ADD NEW CAR")
+        print("            ADD NEW CAR")
         print("="*50)
         
-        make = input("Enter car make: ").strip()
+        make = input("Enter car make (e.g., Toyota): ").strip()
         if not make:
             print("Car make cannot be empty!")
             return
         
-        model = input("Enter car model: ").strip()
+        model = input("Enter car model (e.g., Camry): ").strip()
         if not model:
             print("Car model cannot be empty!")
             return
         
         try:
-            year = int(input("Enter year: ").strip())
+            year = int(input("Enter year (e.g., 2020): ").strip())
         except ValueError:
-            print(" Please enter a valid number for year!")
+            print("Please enter a valid number for year!")
             return
         
         try:
             mileage = int(input("Enter mileage (km): ").strip())
         except ValueError:
-            print(" Please enter a valid number for mileage!")
+            print("Please enter a valid number for mileage!")
             return
         
         available_now = input("Is car available now? (yes/no): ").strip().lower()
@@ -92,13 +99,13 @@ class AdminMenu:
             return
         
         try:
-            min_rent_period = int(input("Enter minimum rent period (in days): ").strip())
+            min_rent_period = int(input("Enter minimum rent period (days): ").strip())
         except ValueError:
             print("Please enter a valid number for minimum rent period!")
             return
         
         try:
-            max_rent_period = int(input("Enter maximum rent period (in days): ").strip())
+            max_rent_period = int(input("Enter maximum rent period (days): ").strip())
         except ValueError:
             print("Please enter a valid number for maximum rent period!")
             return
@@ -112,7 +119,7 @@ class AdminMenu:
         try:
             late_fee_per_day = float(input("Enter late fee per day ($): ").strip())
         except ValueError:
-            print(" Please enter a valid number for late fee!")
+            print("Please enter a valid number for late fee!")
             return
         
         success, message = self.rental_service.add_car(
@@ -121,14 +128,14 @@ class AdminMenu:
         )
         
         if success:
-            print(f"\n {message}")
+            print(f"\n{message}")
         else:
-            print(f"\n {message}")
+            print(f"\n{message}")
     
     def update_car(self):
         """Update an existing car"""
         print("\n" + "="*50)
-        print("UPDATE CAR DETAILS")
+        print("         UPDATE CAR DETAILS")
         print("="*50)
         
         self.view_all_cars()
@@ -136,15 +143,15 @@ class AdminMenu:
         try:
             car_id = int(input("\nEnter Car ID to update: ").strip())
         except ValueError:
-            print(" Invalid Car ID!")
+            print("Invalid Car ID!")
             return
         
         car = self.rental_service.get_car_by_id(car_id)
         if not car:
-            print(f" Car with ID {car_id} not found!")
+            print(f"Car with ID {car_id} not found!")
             return
         
-        print(f"\n Updating car: {car.get_full_name()}")
+        print(f"\nUpdating car: {car.get_full_name()}")
         print("Leave blank to keep current value")
         
         make = input(f"Make [{car.make}]: ").strip() or car.make
@@ -180,9 +187,9 @@ class AdminMenu:
         )
         
         if success:
-            print(f"\n {message}")
+            print(f"\n{message}")
         else:
-            print(f"\n {message}")
+            print(f"\n{message}")
     
     def delete_car(self):
         """Delete a car"""
@@ -195,66 +202,164 @@ class AdminMenu:
         try:
             car_id = int(input("\nEnter Car ID to delete: ").strip())
         except ValueError:
-            print(" Invalid Car ID!")
+            print("Invalid Car ID!")
             return
         
         confirm = input(f"Are you sure you want to delete car ID {car_id}? (yes/no): ").strip().lower()
         if confirm != 'yes':
-            print(" Deletion cancelled.")
+            print("Deletion cancelled.")
             return
         
         success, message = self.rental_service.delete_car(car_id)
         
         if success:
-            print(f"\n {message}")
+            print(f"\n{message}")
         else:
-            print(f"\n {message}")
+            print(f"\n{message}")
     
     def manage_bookings(self):
+        """Manage bookings - FIXED with status checking"""
         print("\n" + "="*50)
-        print("MANAGE BOOKINGS")
+        print("        MANAGE BOOKINGS")
         print("="*50)
         
+        # 1. Show pending bookings
         pending = self.rental_service.get_pending_bookings()
         
-        if not pending:
-            print("\n No pending bookings to manage!")
-            return
+        if pending:
+            print("\nPENDING BOOKINGS:")
+            print(f"{'ID':<6} {'Customer':<20} {'Car':<20} {'Start':<14} {'End':<14} {'Days':<6} {'Fee($)':<10}")
+            print("-" * 95)
+            
+            for booking in pending:
+                car_info = f"{booking['make']} {booking['model']} ({booking['year']})"
+                print(f"{booking['booking_id']:<6} {booking['full_name']:<20} {car_info:<20} {booking['rental_start_date']:<14} {booking['rental_end_date']:<14} {booking['total_days']:<6} {booking['total_fee']:<10.2f}")
+        else:
+            print("\nNo pending bookings to manage!")
         
-        print("\n PENDING BOOKINGS:")
-        print(f"{'ID':<6} {'Customer':<20} {'Car':<20} {'Start':<14} {'End':<14} {'Days':<6} {'Fee($)':<10}")
-        print("-" * 95)
+        # 2. Show approved bookings (for completion)
+        approved = self.rental_service.db.fetch_all('''
+            SELECT b.booking_id, u.full_name, c.make, c.model, c.year,
+                b.rental_start_date, b.rental_end_date,
+                b.total_days, b.total_fee
+            FROM bookings b
+            JOIN users u ON b.customer_id = u.user_id
+            JOIN cars c ON b.car_id = c.car_id
+            WHERE b.status = 'approved'
+            ORDER BY b.booking_date
+        ''')
         
-        for booking in pending:
+        if approved:
+            print("\nAPPROVED BOOKINGS (Ready to complete):")
+            print(f"{'ID':<6} {'Customer':<20} {'Car':<20} {'Start':<14} {'End':<14} {'Days':<6} {'Fee($)':<10}")
+            print("-" * 95)
+        
+        for booking in approved:
             car_info = f"{booking['make']} {booking['model']} ({booking['year']})"
             print(f"{booking['booking_id']:<6} {booking['full_name']:<20} {car_info:<20} {booking['rental_start_date']:<14} {booking['rental_end_date']:<14} {booking['total_days']:<6} {booking['total_fee']:<10.2f}")
         
-        try:
-            booking_id = int(input("\nEnter Booking ID to manage: ").strip())
-        except ValueError:
-            print("Invalid Booking ID!")
-            return
+        print("\nOptions:")
+        print("1. Approve a pending booking")
+        print("2. Reject a pending booking")
+        print("3. Complete a booking (mark as returned)")  
+        print("4. Cancel")  
         
-        print("\n Manage Booking:")
-        print("1. Approve")
-        print("2. Reject")
-        print("3. Cancel")
-        
-        choice = input("Choose action (1-3): ").strip()
+        choice = input("Choose action (1-4): ").strip()
         
         if choice == '1':
+            if not pending:
+                print("No pending bookings to approve!")
+                return
+            
+            try:
+                booking_id = int(input("Enter Booking ID to approve: ").strip())
+            except ValueError:
+                print("Invalid Booking ID!")
+                return
+            
+            booking_check = self.rental_service.db.fetch_one(
+                "SELECT status FROM bookings WHERE booking_id = ?",
+                (booking_id,)
+            )
+            
+            if not booking_check:
+                print("Booking not found!")
+                return
+            
+            if booking_check['status'] != 'pending':
+                print(f"Booking is already {booking_check['status']}!")
+                return
+            
             notes = input("Enter admin notes (optional): ").strip()
             success, message = self.rental_service.approve_booking(booking_id, notes)
-            print(f"\n {message}" if success else f"\n❌ {message}")
+            print(f"\n {message}" if success else f"\n {message}")
+
         elif choice == '2':
+            if not pending:
+                print("No pending bookings to reject!")
+                return
+            
+            try:
+                booking_id = int(input("Enter Booking ID to reject: ").strip())
+            except ValueError:
+                print("Invalid Booking ID!")
+                return
+            
+            booking_check = self.rental_service.db.fetch_one(
+                "SELECT status FROM bookings WHERE booking_id = ?",
+                (booking_id,)
+            )
+            
+            if not booking_check:
+                print("Booking not found!")
+                return
+            
+            if booking_check['status'] != 'pending':
+                print(f"Booking is already {booking_check['status']}!")
+                return
+            
             notes = input("Enter rejection reason: ").strip()
             if not notes:
-                print(" Rejection reason is required!")
+                print("Rejection reason is required!")
                 return
+            
             success, message = self.rental_service.reject_booking(booking_id, notes)
-            print(f"\n {message}" if success else f"\n{message}")
-        elif choice == '3':
-            print(" Operation cancelled.")
+            print(f"\n{message}" if success else f"\n {message}")
+        
+        elif choice == '3':  
+            if not approved:
+                print("No approved bookings to complete!")
+                return
+            
+            try:
+                booking_id = int(input("Enter Booking ID to complete: ").strip())
+            except ValueError:
+                print("Invalid Booking ID!")
+                return
+            
+            booking_check = self.rental_service.db.fetch_one(
+                "SELECT status FROM bookings WHERE booking_id = ?",
+                (booking_id,)
+            )
+            
+            if not booking_check:
+                print("Booking not found!")
+                return
+            
+            if booking_check['status'] != 'approved':
+                print(f"Booking is {booking_check['status']}, not 'approved'!")
+                return
+            
+            actual_return = input("Enter actual return date (YYYY-MM-DD) [press Enter for today]: ").strip()
+            if not actual_return:
+                actual_return = None
+            
+            success, message = self.rental_service.complete_booking(booking_id, actual_return)
+            print(f"\n{message}" if success else f"\n {message}")
+        
+        elif choice == '4': 
+            print("Operation cancelled.")
+        
         else:
             print("Invalid choice!")
     
@@ -279,3 +384,27 @@ class AdminMenu:
             print(f"{booking['booking_id']:<6} {booking['full_name']:<18} {car_info:<18} {booking['rental_start_date']:<12} {booking['rental_end_date']:<12} {booking['total_days']:<6} {booking['total_fee']:<8.2f} {booking['status']:<10} {notes:<15}")
         
         print("\n" + "="*50)
+    # Add to menu options
+    def change_password(self):
+        """Change user password"""
+        print("\n" + "="*50)
+        print("CHANGE PASSWORD")
+        print("="*50)
+        
+        old_password = input("Enter current password: ").strip()
+        new_password = input("Enter new password (min 6 characters): ").strip()
+        confirm_password = input("Confirm new password: ").strip()
+        
+        if new_password != confirm_password:
+            print("Passwords do not match!")
+            return
+        
+        success, message = self.auth_service.change_password(
+            self.user.user_id, old_password, new_password
+        )
+        
+        if success:
+            print(f"\n{message}")
+        else:
+            print(f"\n{message}")
+                       
